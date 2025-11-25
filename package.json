@@ -26,7 +26,7 @@
     "node": ">= 8.0.0"
   },
   "dependencies": {
-    "@fiahfy/icns": "0.0.5",
+    "@fiahfy/icns": "0.0.7",
     "datauri": "^2.0.0",
     "lsregister": "1.0.0",
     "macos-defaults": "https://github.com/brettz9/macOS-defaults#openwith",
