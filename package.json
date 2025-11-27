@@ -16,6 +16,7 @@
     }
   },
   "scripts": {
+    "prepublishOnly": "npm run rollup",
     "tsc": "tsc",
     "attw": "attw --pack",
     "eslint": "eslint --ext=js,md,html .",
