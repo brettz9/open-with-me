@@ -37,127 +37,144 @@ try {
   console.log('Error', err);
 }
 
-// Gets all registered applications and their file associations,
-//   filtering out
-// eslint-disable-next-line @stylistic/max-len -- Long path
-// /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -dump | grep -n7 'public'
-let contentTypeObj;
-
-/** @type {string[]} */
-const appsByExt = [];
+// Gets all registered applications and their file associations
+// Using lsregister package which returns items with properties like:
+//   - bundleId (string with bundle info including path, name, icons)
+//   - claimId (string with binding info)
+//   - bindings (content type UTI like "public.plain-text")
+//   - name, icon, etc.
+/**
+ * @type {Record<string, Array<{name: string, path?: string,
+ *   icon?: string}>>}
+ */
+const contentTypeObj = {};
 const iconMap = new Map();
+
 try {
   const result = await lsregister.dump();
   console.log('dump result', result.length);
-  contentTypeObj = result.reduce((obj, item) => {
-    const {
-      plistCommon
-      // contentType, extension,
-      // uti, bindings, serviceId, uRLScheme,
-      // bundleClass, containerMountState, extPointID,
-      // claimId, volumeId // , ...others
-    } = item;
 
-    if (
-      // Ignore if specific to a particular user or app's private config;
-      //  we want application capabilities, document types, or URL schemes
-      //  available across the system
-      !plistCommon ||
-      // `CFBundleDocumentTypes` is a key in an Apple app's
-      //   Info.plist file that is an array of dictionaries that
-      //   defines the types of documents the application is capable of
-      //   opening, viewing, or editing
-      !plistCommon.CFBundleDocumentTypes) {
-      return obj;
+  // Parse bundle entries to build app name and icon mapping
+  // Map by bundle name like "HP (0x1420)" from bundleId first line
+  const bundleMap = new Map();
+  result.forEach((item) => {
+    if (item.bundleId) {
+      // First line has format: "BundleName (0xHEX)"
+      const firstLineMatch = item.bundleId.match(/^(?<bundleName>.+?)(?:\s+\(0x[\da-f]+\))?\n/v);
+      const nameMatch = item.bundleId.match(/\ndisplayName:\s+(?<name>.+)/v);
+      const pathMatch = item.bundleId.match(/\npath:\s+(?<path>.+?)(?:\s+\(|$)/v);
+      const iconMatch = item.bundleId.match(/\nicons:\s+(?<icon>.+)/v);
+
+      if (firstLineMatch?.groups && nameMatch?.groups) {
+        const bundleKey = firstLineMatch.groups.bundleName.trim();
+        const name = nameMatch.groups.name.trim();
+        const path = pathMatch?.groups?.path?.trim();
+        const icon = iconMatch?.groups?.icon?.trim();
+
+        bundleMap.set(bundleKey, {name, path, icon});
+
+        if (icon && path) {
+          iconMap.set(name, join(path, icon));
+        }
+      }
     }
-    if (
-      // Ignore if no display name AND
-      !plistCommon.CFBundleDisplayName &&
-      // ignore if no bundle name
-      !plistCommon.CFBundleName) {
-      // Excludes `com.apple.system-library` and `com.apple.local-library`
-      return obj;
-    }
-    const bundleName = plistCommon.CFBundleDisplayName ||
-      plistCommon.CFBundleName;
-    // CFBundleExecutable or CFBundleName seem similar? (use with `open -a`)
-    // CFBundleIdentifier with `open -b`
-    // return contentType;
+  });
 
-    plistCommon.CFBundleDocumentTypes.forEach((dts) => {
-      if (
-        // If no abstract name for this document type OR
-        !dts.CFBundleTypeName ||
+  console.log('bundleMap size:', bundleMap.size);
 
-        // If no info on content type in this document type AND
-        (!dts.LSItemContentTypes &&
-          // no file extension array for this document type
-          !dts.CFBundleTypeExtensions)) {
+  // Process claim entries to map content types to apps
+  let matchedClaims = 0;
+  let unmatchedBundles = 0;
+  result.forEach((item) => {
+    if (item.claimId) {
+      // Extract bindings (UTIs) from claimId string
+      const bindingsMatch = item.claimId.match(/\nbindings:\s+(?<bindings>.+)/v);
+      if (!bindingsMatch?.groups) {
         return;
       }
-      // console.log('item', Object.keys(item).filter((i) => i.includes('ic')));
-      // console.log('item', item.iconName, item.iconFlags, item.icons);
 
-      // If only file extensions for this document type
-      if (dts.CFBundleTypeExtensions && !dts.LSItemContentTypes) {
-        // If matches the specified file's extension, add the
-        //   application name
-        if (dts.CFBundleTypeExtensions.includes(ext)) {
-          appsByExt.push(bundleName);
-          if (item.icons) {
-            iconMap.set(bundleName, join(item.path, item.icons));
-          }
-          return;
-        }
-        return;
-      }
-      // If only has `CFBundleTypeName` is just a file type
-      // console.log('item', plistCommon.CFBundleIdentifier, bundleName);
-
-      // Content types like `public.plain-text`
-      dts.LSItemContentTypes.forEach((LSItemContentType) => {
-        if (!obj[LSItemContentType]) {
-          obj[LSItemContentType] = [];
-        }
-        if (item.icons) {
-          iconMap.set(bundleName, join(item.path, item.icons));
-        }
-        // obj[LSItemContentType].push(plistCommon.CFBundleIdentifier);
-
-        // Map content types like `public.plain-text` to array of app names
-        obj[LSItemContentType].push(bundleName); // .push(dts.CFBundleTypeName);
-        // console.log('plistCommon', plistCommon.CFBundleIdentifier);
+      // bindings can contain multiple UTIs
+      //  (e.g., "public.plain-text, public.html")
+      const utis = bindingsMatch.groups.bindings.split(',').map((s) => {
+        return s.trim();
       });
-      // || dts.CFBundleTypeExtensions || dts.CFBundleTypeMIMETypes);
-    });
-    return obj;
-    /*
-    return !bindings && !contentType && !extension &&
-      !uti && !serviceId && !bundleClass && !containerMountState &&
-      !extPointID && !uRLScheme && !claimId && !volumeId &&
-      !Object.keys(others).some((item) => item.startsWith('pluginIdentif'));
-    */
-    // return bindings && (bindings.includes('.js') ||
-    //    bindings.includes('javascript'));
-    // This is messed up, but onto the right track now
-  }, {});
-  // console.log(JSON.stringify(contentTypeObj, null, 2));
+
+      // Extract bundle reference from claimId (format: "bundle: Name (0xHEX)")
+      const bundleMatch = item.claimId.match(
+        /\nbundle:\s+(?<bundle>.+?)\s*\n/v
+      );
+      if (bundleMatch?.groups) {
+        let bundleKey = bundleMatch.groups.bundle.trim();
+        // Remove hex ID like " (0x1420)" to get just the name
+        bundleKey = bundleKey.replace(/\s+\(0x[\da-f]+\)$/i, '');
+        const bundleInfo = bundleMap.get(bundleKey);
+
+        if (bundleInfo) {
+          matchedClaims++;
+          utis.forEach((uti) => {
+            if (!contentTypeObj[uti]) {
+              contentTypeObj[uti] = [];
+            }
+            // Avoid duplicates
+            if (!contentTypeObj[uti].some((app) => {
+              return app.name === bundleInfo.name;
+            })) {
+              contentTypeObj[uti].push(bundleInfo);
+            }
+          });
+        } else {
+          unmatchedBundles++;
+          if (unmatchedBundles <= 3) {
+            console.log('Unmatched bundle key:', JSON.stringify(bundleKey));
+            console.log(
+              'Sample keys:',
+              [...bundleMap.keys()].slice(0, 3)
+            );
+          }
+        }
+      }
+    }
+  });
+
+  console.log(
+    `Matched ${matchedClaims} claims, ${unmatchedBundles} unmatched`
+  );
+
+  console.log(
+    'contentTypeObj keys sample:',
+    Object.keys(contentTypeObj).slice(0, 20)
+  );
+  console.log(
+    'Has net.daringfireball.markdown?',
+    'net.daringfireball.markdown' in contentTypeObj
+  );
+  console.log('Has public.plain-text?', 'public.plain-text' in contentTypeObj);
 } catch (err) {
   console.log('Error', err);
 }
 
-console.log('appsByExt', appsByExt);
-
-// Combine apps from content type hierarchy (`ItemContentTypeTree`)
-//  with extension-based matches (`appsByExt`), removes dupes,
-//  and sorts alphabetically
-const appNames = [...new Set((ItemContentTypeTree || []).reduce((arr, item) => {
-  if (!contentTypeObj[item]) {
-    return arr;
-  }
-  // eslint-disable-next-line unicorn/prefer-spread -- Check
-  return arr.concat(contentTypeObj[item]);
-}, appsByExt))].toSorted();
+// Combine apps from content type hierarchy (`ItemContentTypeTree`),
+//  removes dupes, and sorts alphabetically
+/** @type {string[]} */
+const appNames = [...new Set(
+  (ItemContentTypeTree || []).reduce(
+    /**
+     * @param {string[]} arr
+     * @param {string} uti
+     * @returns {string[]}
+     */
+    (arr, uti) => {
+      if (!contentTypeObj[uti]) {
+        return arr;
+      }
+      // Extract just the app names
+      const names = contentTypeObj[uti].map((app) => app.name);
+      // eslint-disable-next-line unicorn/prefer-spread -- Check
+      return arr.concat(names);
+    },
+    /** @type {string[]} */ ([])
+  )
+)].toSorted();
 console.log('appNames', appNames);
 
 // Get the icons for the specified apps
@@ -167,7 +184,7 @@ const appIcons = appNames.map((appName) => {
 
 console.log('appIcons', appIcons);
 
-const appIconPngs = appIcons.map((appIcon) => {
+const appIconPngs = appIcons.filter(Boolean).map((appIcon) => {
   // Read each macOS .icns file
   // eslint-disable-next-line n/no-sync -- Change
   const buf = readFileSync(appIcon);
