@@ -1,5 +1,6 @@
 .gitignore
 eslint.config.js
+coverage
 
 # Native addon build artifacts (intermediate files)
 native/build/

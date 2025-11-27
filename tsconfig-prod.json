@@ -5,13 +5,15 @@
     "module": "NodeNext",
     "allowJs": true,
     "checkJs": true,
-    "noEmit": true,
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
     "noImplicitAny": true,
     "strict": true,
     "target": "es2024",
     "outDir": "dist",
     "skipLibCheck": true
   },
-  "include": ["*.js", "src/**/*.js", "src/**/*.cts", "test/**/*.js"],
+  "include": ["src/**/*.js", "src/**/*.cts"],
   "exclude": ["node_modules"]
 }
