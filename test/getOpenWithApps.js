@@ -1,18 +1,38 @@
 /* eslint-disable no-console -- CLI */
 import {join} from 'node:path';
-import {getOpenWithApps, getAppIcons} from '../src/index.js';
+import {getOpenWithApps} from '../src/getOpenWithApps.js';
+import {getAppIcons} from '../src/getAppIcon.js';
+
+// Try to use native addon, fall back to JS implementation
+let nativeAddon;
+try {
+  nativeAddon = await import('../native/index.js');
+  console.log('✓ Using native Launch Services addon\n');
+} catch {
+  console.log(
+    '⚠ Native addon not available, using JavaScript implementation\n'
+  );
+}
 
 const filePath = join(import.meta.dirname, '../README.md');
 
 console.log('Getting apps that can open:', filePath);
 
 // Get prioritized list of apps
-const apps = await getOpenWithApps(filePath, {
-  includeAlternate: true,
-  maxResults: 20
-  // skipCompatibilityCheck: true // Skip arch checks for faster testing
-  // maxUTIDepth: 2 // Optionally limit to most specific UTIs
-});
+let apps;
+if (nativeAddon) {
+  // Use native addon for fast performance
+  const {apps: nativeApps} = nativeAddon.getApplicationsForFile(filePath);
+  apps = nativeApps;
+} else {
+  // Fall back to JavaScript implementation
+  apps = await getOpenWithApps(filePath, {
+    includeAlternate: true,
+    maxResults: 20
+    // skipCompatibilityCheck: true // Skip arch checks for faster testing
+    // maxUTIDepth: 2 // Optionally limit to most specific UTIs
+  });
+}
 
 // Sort by priority flags first, then alphabetically
 apps.sort(

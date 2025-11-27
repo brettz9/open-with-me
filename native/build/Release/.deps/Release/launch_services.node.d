@@ -1,1 +1,0 @@
-cmd_Release/launch_services.node := c++ -bundle -undefined dynamic_lookup -Wl,-search_paths_first -mmacosx-version-min=10.15 -arch arm64 -L./Release -stdlib=libc++  -o Release/launch_services.node Release/obj.target/launch_services/src/launch_services.o Release/nothing.a -framework CoreServices -framework Foundation -framework AppKit

@@ -5,7 +5,7 @@ export default {
     '@fiahfy/icns', 'datauri/parser.js', 'mdls', 'lsregister', 'mac-defaults'
   ],
   output: {
-    file: 'dist/index.cjs',
+    dir: 'dist',
     format: 'cjs'
   }
 };
