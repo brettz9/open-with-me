@@ -1,5 +1,9 @@
 # CHANGES for open-with-me
 
+## 0.2.3
+
+- fix: path for native add-on
+
 ## 0.2.2
 
 - fix: path for native add-on
