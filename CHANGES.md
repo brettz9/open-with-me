@@ -1,5 +1,9 @@
 # CHANGES for open-with-me
 
+## 0.3.0
+
+- feat: add `isDefault` and `isFileDefault` for native add-on
+
 ## 0.2.4
 
 - fix(types): return type for `getOpenWithApps`
