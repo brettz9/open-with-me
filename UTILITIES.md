@@ -10,14 +10,15 @@ Retrieves a prioritized list of applications that can open a given file, matchin
 
 #### Usage
 
-```javascript
+```js
 import {getOpenWithApps} from './getOpenWithApps.js';
 
 const apps = await getOpenWithApps('/path/to/file.md', {
-  includeAlternate: true,  // Include apps with "Alternate" rank
-  maxResults: 20           // Limit results
+  includeAlternate: true, // Include apps with "Alternate" rank
+  maxResults: 20 // Limit results
 });
 
+console.log('apps', apps);
 // Returns array of:
 // {
 //   name: 'TextEdit',
@@ -47,19 +48,22 @@ Extracts and converts macOS application icons from `.icns` format to PNG data UR
 
 #### Usage
 
-```javascript
+```js
 import {getAppIcon, getAppIcons} from './getAppIcon.js';
 
 // Single icon
-const iconDataUri = getAppIcon('/Applications/TextEdit.app/Contents/Resources/Edit.icns', {
-  minSize: 1024,           // Minimum icon size in bytes
-  preferLarger: false      // false = smallest valid icon, true = largest
-});
+const iconDataUri =
+  getAppIcon('/Applications/TextEdit.app/Contents/Resources/Edit.icns', {
+    minSize: 1024, // Minimum icon size in bytes
+    preferLarger: false // false = smallest valid icon, true = largest
+  });
+console.log('iconDataUri', iconDataUri);
 // Returns: 'data:image/png;base64,iVBORw0KG...' or null
 
 // Multiple icons
 const apps = await getOpenWithApps('/path/to/file.md');
 const icons = await getAppIcons(apps);
+console.log('icons', icons);
 // Returns: array of data URIs or null values
 ```
 
@@ -72,13 +76,16 @@ const icons = await getAppIcons(apps);
 
 ## Example: Electron Integration
 
-```javascript
+```js
 // In main process
 import {getOpenWithApps} from './src/getOpenWithApps.js';
 import {getAppIcons} from './src/getAppIcon.js';
 import {shell} from 'electron';
 
-async function showOpenWithMenu(filePath) {
+/**
+ * @param {string} filePath
+ */
+export async function showOpenWithMenu (filePath) {
   // Get apps
   const apps = await getOpenWithApps(filePath, {
     includeAlternate: true,

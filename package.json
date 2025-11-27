@@ -2,13 +2,16 @@
   "name": "open-with-me",
   "version": "0.1.0",
   "description": "Obtain (and open) desktop applications that can open a given file",
-  "main": "index.js",
+  "main": "src/index.js",
   "type": "module",
   "scripts": {
     "tsc": "tsc",
     "eslint": "eslint --ext=js,md,html .",
     "lint": "npm run eslint --",
-    "test": "node src/index.js"
+    "test-index": "node test/index.js",
+    "test-native": "node test/test-native.js",
+    "test": "npm run test-native && npm run test-index",
+    "install": "node scripts/install-native.js"
   },
   "repository": {
     "type": "git",

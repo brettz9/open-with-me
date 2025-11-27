@@ -1,0 +1,17 @@
+{
+  "name": "launch-services-native",
+  "version": "1.0.0",
+  "description": "Native Launch Services bindings for Node.js",
+  "main": "index.js",
+  "type": "commonjs",
+  "gypfile": true,
+  "scripts": {
+    "install": "node-gyp rebuild"
+  },
+  "dependencies": {
+    "node-addon-api": "^8.0.0"
+  },
+  "devDependencies": {
+    "node-gyp": "^10.0.0"
+  }
+}

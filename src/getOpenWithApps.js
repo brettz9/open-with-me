@@ -1,11 +1,14 @@
 /* eslint-disable sonarjs/os-command -- API */
+/* eslint-disable n/no-sync -- Disable for now */
 /**
  * Get prioritized list of applications that can open a file,
  * matching Finder's "Open with" behavior.
  */
 import {join, extname} from 'node:path';
 import {execSync} from 'node:child_process';
+// @ts-expect-error - No type declarations available
 import mdls from 'mdls';
+// @ts-expect-error - No type declarations available
 import lsregister from 'lsregister';
 import {MacOSDefaults, OpenWith} from 'mac-defaults';
 
@@ -103,8 +106,7 @@ export async function getOpenWithApps (filePath, options = {}) {
     fileExt,
     ItemContentTypeTree,
     debug,
-    includeWildcard,
-    skipCompatibilityCheck
+    includeWildcard
   );
 
   if (debug) {
@@ -113,6 +115,7 @@ export async function getOpenWithApps (filePath, options = {}) {
     ItemContentTypeTree.forEach(
       /**
        * @param {string} uti
+       * @returns {void}
        */
       (uti) => {
         const apps = contentTypeObj[uti];
@@ -122,6 +125,7 @@ export async function getOpenWithApps (filePath, options = {}) {
           apps.slice(0, 3).forEach(
             /**
              * @param {{name: string, rank: string}} app
+             * @returns {void}
              */
             (app) => {
               // eslint-disable-next-line no-console -- Debugging
@@ -166,6 +170,7 @@ export async function getOpenWithApps (filePath, options = {}) {
     /**
      * @param {string} uti
      * @param {number} index
+     * @returns {void}
      */
     (uti, index) => {
       if (!contentTypeObj[uti]) {
@@ -192,8 +197,8 @@ export async function getOpenWithApps (filePath, options = {}) {
             app.rank !== 'ExtensionMatch') {
           // Check if this app appears in any more specific UTI
           const hasSpecificUTI = utisToProcess.some(
-            (/** @type {string} */ specificUti) =>
-              !genericUTIs.has(specificUti) &&
+            // eslint-disable-next-line @stylistic/max-len -- Long
+            (/** @type {string} */ specificUti) => !genericUTIs.has(specificUti) &&
               contentTypeObj[specificUti]?.some((a) => a.name === app.name)
           );
           if (!hasSpecificUTI) {
@@ -253,7 +258,11 @@ export async function getOpenWithApps (filePath, options = {}) {
   });
 
   // Remove weight property before returning
-  apps = apps.map(({weight: _weight, ...app}) => app);
+  apps = apps.map(({
+    // eslint-disable-next-line no-unused-vars -- Removing property
+    weight: _weight,
+    ...app
+  }) => app);
 
   // Limit results if requested
   if (maxResults && apps.length > maxResults) {
@@ -377,17 +386,16 @@ function isAppCompatible (appPath) {
  * @param {string[]} utiHierarchy - UTI hierarchy for the file
  * @param {boolean} debug - Enable debug logging
  * @param {boolean} includeWildcard - Include wildcard extension support
- * @param {boolean} skipCompatibilityCheck - Skip architecture checks
  * @returns {Promise<Record<string, Array<{name: string, path: string,
- *   icon?: string, rank: string}>>>} Map of UTIs to app arrays
+ *   icon?: string, rank: string, identifier?: string}>>>}
+ *   Map of UTIs to app arrays
  */
 async function getRegisteredApps (
   includeAlternate,
   fileExt,
   utiHierarchy,
   debug = false,
-  includeWildcard = false,
-  skipCompatibilityCheck = false
+  includeWildcard = false
 ) {
   /**
    * @type {Record<string, Array<{name: string, path: string,
@@ -409,7 +417,12 @@ async function getRegisteredApps (
   const extensionApps = new Map(); // appPath -> appName
 
   result.forEach(
-    /** @param {*} item - lsregister dump item */
+    /**
+     * @param {{
+     *   bundleId?: string
+     * }} item - lsregister dump item
+     * @returns {void}
+     */
     (item) => {
       if (item.bundleId) {
         const firstLineMatch = item.bundleId.match(
@@ -482,6 +495,7 @@ async function getRegisteredApps (
                   const supportsExtension = docTypes.some(
                     /**
                      * @param {{CFBundleTypeExtensions?: string[]}} docType
+                     * @returns {boolean}
                      */
                     (docType) => {
                       const extensions = docType.CFBundleTypeExtensions || [];
@@ -512,7 +526,12 @@ async function getRegisteredApps (
   );
   // Process claims to map content types to apps
   result.forEach(
-    /** @param {*} item - lsregister dump item */
+    /**
+     * @param {{
+     *   claimId?: string
+     * }} item - lsregister dump item
+     * @returns {void}
+     */
     (item) => {
       if (item.claimId) {
         const bindingsMatch = item.claimId.match(
@@ -534,7 +553,10 @@ async function getRegisteredApps (
         }
 
         const utis = bindingsMatch.groups.bindings.split(',').map(
-          /** @param {string} s - UTI string */
+          /**
+           * @param {string} s - UTI string
+           * @returns {string}
+           */
           (s) => s.trim()
         );
 
@@ -554,14 +576,20 @@ async function getRegisteredApps (
               : rank;
 
             utis.forEach(
-              /** @param {string} uti - UTI string */
+              /**
+               * @param {string} uti - UTI string
+               * @returns {void}
+               */
               (uti) => {
                 if (!contentTypeObj[uti]) {
                   contentTypeObj[uti] = [];
                 }
                 const appWithRank = {...bundleInfo, rank: effectiveRank};
                 if (!contentTypeObj[uti].some(
-                  /** @param {{name: string}} app - App object */
+                  /**
+                   * @param {{name: string}} app - App object
+                   * @returns {boolean}
+                   */
                   (app) => app.name === bundleInfo.name
                 )) {
                   contentTypeObj[uti].push(appWithRank);

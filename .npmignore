@@ -1,2 +1,15 @@
 .gitignore
 eslint.config.js
+
+# Native addon build artifacts (intermediate files)
+native/build/
+native/node_modules/
+native/package-lock.json
+
+# Keep these for building on user's machine:
+# - native/src/ (source code)
+# - native/binding.gyp (build config)
+# - native/package.json (dependencies)
+# - native/index.js (module exports)
+# - native/README.md (documentation)
+

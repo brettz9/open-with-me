@@ -69,7 +69,7 @@ The `lsregister` package is the main bottleneck. Alternatives:
 
 For production use with sub-second performance, a **native addon** is the only realistic solution. The current JavaScript approach is fundamentally limited by:
 1. Shell command overhead
-2. Text parsing overhead  
+2. Text parsing overhead
 3. Lack of direct API access
 
 The 74% improvement (34s → 9s) is the best achievable with the current architecture.
