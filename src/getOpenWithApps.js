@@ -1,3 +1,4 @@
+/* eslint-disable sonarjs/os-command -- API */
 /**
  * Get prioritized list of applications that can open a file,
  * matching Finder's "Open with" behavior.
@@ -8,8 +9,12 @@ import mdls from 'mdls';
 import lsregister from 'lsregister';
 import {MacOSDefaults, OpenWith} from 'mac-defaults';
 
+// Cache for app compatibility checks to avoid repeated mdls calls
+/** @type {Map<string, boolean>} */
+const compatibilityCache = new Map();
+
 /**
- * @typedef {Object} OpenWithApp
+ * @typedef {object} OpenWithApp
  * @property {string} name - Application display name
  * @property {string} path - Full path to .app bundle
  * @property {string} [icon] - Path to app icon file
@@ -27,6 +32,10 @@ import {MacOSDefaults, OpenWith} from 'mac-defaults';
  * @property {number} [maxResults] - Limit number of results
  * @property {boolean} [debug] - Enable debug logging
  * @property {number} [maxUTIDepth] - Only include apps from first N UTIs
+ * @property {boolean} [includeWildcard] - Include apps with
+ *   wildcard (*) support
+ * @property {boolean} [skipCompatibilityCheck] - Skip architecture checks
+ *   (faster but may include incompatible apps)
  */
 
 /**
@@ -40,7 +49,9 @@ export async function getOpenWithApps (filePath, options = {}) {
     includeAlternate = true,
     maxResults,
     debug = false,
-    maxUTIDepth
+    maxUTIDepth,
+    includeWildcard = false,
+    skipCompatibilityCheck = false
   } = options;
 
   // Get file extension
@@ -91,7 +102,9 @@ export async function getOpenWithApps (filePath, options = {}) {
     includeAlternate,
     fileExt,
     ItemContentTypeTree,
-    debug
+    debug,
+    includeWildcard,
+    skipCompatibilityCheck
   );
 
   if (debug) {
@@ -104,19 +117,19 @@ export async function getOpenWithApps (filePath, options = {}) {
       (uti) => {
         const apps = contentTypeObj[uti];
         if (apps) {
-          // eslint-disable-next-line no-console
+          // eslint-disable-next-line no-console -- Debugging
           console.log(`  ${uti}: ${apps.length} apps`);
           apps.slice(0, 3).forEach(
             /**
              * @param {{name: string, rank: string}} app
              */
             (app) => {
-              // eslint-disable-next-line no-console
+              // eslint-disable-next-line no-console -- Debugging
               console.log(`    - ${app.name} (${app.rank})`);
             }
           );
         } else {
-          // eslint-disable-next-line no-console
+          // eslint-disable-next-line no-console -- Debugging
           console.log(`  ${uti}: NO APPS FOUND`);
         }
       }
@@ -131,6 +144,13 @@ export async function getOpenWithApps (filePath, options = {}) {
     Default: 2,
     Alternate: 1
   };
+
+  // Define overly generic UTIs that should be filtered
+  const genericUTIs = new Set([
+    'public.data',
+    'public.item',
+    'public.content'
+  ]);
 
   // Optionally limit to only the most specific UTIs
   const utisToProcess = maxUTIDepth
@@ -164,6 +184,28 @@ export async function getOpenWithApps (filePath, options = {}) {
           ] || 0
         );
         const totalWeight = (rankWeight * 10) + utiWeight;
+
+        // Skip apps that only match on very generic UTIs
+        // unless they also match on more specific UTIs
+        // UNLESS they have ExtensionMatch rank (explicitly support extension)
+        if (!existing && genericUTIs.has(uti) &&
+            app.rank !== 'ExtensionMatch') {
+          // Check if this app appears in any more specific UTI
+          const hasSpecificUTI = utisToProcess.some(
+            (/** @type {string} */ specificUti) =>
+              !genericUTIs.has(specificUti) &&
+              contentTypeObj[specificUti]?.some((a) => a.name === app.name)
+          );
+          if (!hasSpecificUTI) {
+            return; // Skip this app
+          }
+        }
+
+        // Check compatibility only for apps that passed UTI filtering
+        if (!skipCompatibilityCheck && app.path && app.path.endsWith('.app') &&
+            !isAppCompatible(app.path)) {
+          return; // Skip incompatible apps (e.g., 32-bit only)
+        }
 
         if (!existing || totalWeight > existing.weight) {
           appMap.set(key, {
@@ -274,12 +316,68 @@ async function getUserDefaults (contentTypes, fileExt) {
   }
 
   return {userDefaults: defaults, systemDefaultBundleIds};
-}/**
+}
+
+/**
+ * Check if app is compatible with current macOS version.
+ * @param {string} appPath - Path to .app bundle
+ * @returns {boolean} True if compatible, false otherwise
+ */
+function isAppCompatible (appPath) {
+  // Check cache first
+  if (compatibilityCache.has(appPath)) {
+    return compatibilityCache.get(appPath) ?? true;
+  }
+
+  // System apps are always compatible
+  if (appPath.startsWith('/System/')) {
+    compatibilityCache.set(appPath, true);
+    return true;
+  }
+
+  try {
+    // Check architecture - macOS requires 64-bit since Catalina (10.15)
+    const result = execSync(
+      `mdls -name kMDItemExecutableArchitectures "${appPath}" 2>/dev/null`,
+      {encoding: 'utf8'}
+    );
+
+    // Parse architectures from output like:
+    //   kMDItemExecutableArchitectures = (i386)
+    // eslint-disable-next-line prefer-named-capture-group -- Convenient
+    const archMatch = result.match(/kMDItemExecutableArchitectures\s*=\s*\(([^\)]+)\)/sv);
+    if (!archMatch) {
+      compatibilityCache.set(appPath, true);
+      return true; // Can't determine, assume compatible
+    }
+
+    const architectures = archMatch[1].
+      split(',\n').
+      map((arch) => arch.trim().replaceAll('"', ''));
+
+    // Check if app only has 32-bit architectures (i386, ppc)
+    const is32BitOnly = architectures.every(
+      (arch) => arch === 'i386' || arch === 'ppc' || arch === 'ppc7400' ||
+        arch === 'ppc970' || arch === '(null)' || arch === ''
+    );
+
+    const compatible = !is32BitOnly;
+    compatibilityCache.set(appPath, compatible);
+    return compatible;
+  } catch {
+    compatibilityCache.set(appPath, true);
+    return true; // If check fails, assume compatible
+  }
+}
+
+/**
  * Get all registered applications and their document type support.
  * @param {boolean} includeAlternate - Include apps with Alternate rank
  * @param {string} fileExt - File extension to match (e.g., 'md')
  * @param {string[]} utiHierarchy - UTI hierarchy for the file
  * @param {boolean} debug - Enable debug logging
+ * @param {boolean} includeWildcard - Include wildcard extension support
+ * @param {boolean} skipCompatibilityCheck - Skip architecture checks
  * @returns {Promise<Record<string, Array<{name: string, path: string,
  *   icon?: string, rank: string}>>>} Map of UTIs to app arrays
  */
@@ -287,7 +385,9 @@ async function getRegisteredApps (
   includeAlternate,
   fileExt,
   utiHierarchy,
-  debug = false
+  debug = false,
+  includeWildcard = false,
+  skipCompatibilityCheck = false
 ) {
   /**
    * @type {Record<string, Array<{name: string, path: string,
@@ -297,8 +397,11 @@ async function getRegisteredApps (
   const result = await lsregister.dump();
 
   // Build bundle name to info mapping AND check for extension support
-  /** @type {Map<string, {name: string, path: string, icon?: string,
-   *   identifier?: string}>} */
+  /**
+   * @type {Map<string, {name: string, path: string, icon?: string,
+   *   identifier?: string}>
+   * }
+   */
   const bundleMap = new Map();
 
   // Apps that support file extension (check all apps' paths for Info.plist)
@@ -312,7 +415,10 @@ async function getRegisteredApps (
         const firstLineMatch = item.bundleId.match(
           /^(?<bundleName>.+?)(?:\s+\(0x[\da-f]+\))?\n/v
         );
-        const nameMatch = item.bundleId.match(/\ndisplayName:\s+(?<name>.+)/v);
+        const displayNameMatch = item.bundleId.match(
+          /\ndisplayName:\s+(?<name>.+)/v
+        );
+        const nameMatch = item.bundleId.match(/\nname:\s+(?<name>.+)/v);
         const pathMatch = item.bundleId.match(
           /\npath:\s+(?<path>.+?)(?:\s+\(|$)/v
         );
@@ -321,24 +427,41 @@ async function getRegisteredApps (
           /\nidentifier:\s+(?<identifier>\S+)/v
         );
 
-        if (firstLineMatch?.groups && nameMatch?.groups) {
+        if (firstLineMatch?.groups &&
+            (displayNameMatch?.groups || nameMatch?.groups)) {
           const bundleKey = firstLineMatch.groups.bundleName.trim();
-          const name = nameMatch.groups.name.trim();
+          // Prefer displayName over name
+          const name = (displayNameMatch?.groups?.name ||
+            nameMatch?.groups?.name || '').trim();
           const path = pathMatch?.groups?.path?.trim();
           const icon = iconMatch?.groups?.icon?.trim();
           const identifier = identifierMatch?.groups?.identifier?.trim();
 
-          /** @type {{name: string, path: string, icon?: string,
-           *   identifier?: string}} */
+          /**
+           * @type {{name: string, path: string, icon?: string,
+           *   identifier?: string}}
+           */
           const info = {
             name,
             path: path || '',
-            identifier  // Store the CFBundleIdentifier
+            identifier
           };
           if (icon && path) {
             info.icon = join(path, icon);
           }
-          bundleMap.set(bundleKey, info);
+
+          // Prefer /Applications/ paths over simulator/container paths
+          const existing = bundleMap.get(bundleKey);
+          const isMainApp = path && path.startsWith('/Applications/');
+          const existingIsMainApp = existing?.path.startsWith(
+            '/Applications/'
+          );
+
+          // Don't check compatibility yet - defer until we know if app
+          // is relevant for this file type to avoid unnecessary checks
+          if (!existing || (isMainApp && !existingIsMainApp)) {
+            bundleMap.set(bundleKey, info);
+          }
 
           // Check for extension support by reading Info.plist if path exists
           if (fileExt && path && path.endsWith('.app')) {
@@ -346,14 +469,37 @@ async function getRegisteredApps (
               // Check if Info.plist contains this extension
               const plistPath = `${path}/Contents/Info.plist`;
               const plistContent = execSync(
-                `plutil -convert json -o - "${plistPath}" 2>/dev/null || echo ""`
+                `plutil -convert json -o - "${plistPath}" 2>/dev/null`
               ).toString();
 
-              if (plistContent && plistContent.includes(`"${fileExt}"`)) {
-                extensionApps.set(path, name);
-                if (debug) {
-                  // eslint-disable-next-line no-console -- Debug output
-                  console.log(`✓ ${name} supports .${fileExt}`);
+              if (plistContent) {
+                try {
+                  const plist = JSON.parse(plistContent);
+                  const docTypes = plist.CFBundleDocumentTypes || [];
+
+                  // Check if any document type explicitly supports
+                  //   this extension
+                  const supportsExtension = docTypes.some(
+                    /**
+                     * @param {{CFBundleTypeExtensions?: string[]}} docType
+                     */
+                    (docType) => {
+                      const extensions = docType.CFBundleTypeExtensions || [];
+                      // Match explicit extension or wildcard (if enabled)
+                      return extensions.includes(fileExt) ||
+                        (includeWildcard && extensions.includes('*'));
+                    }
+                  );
+
+                  if (supportsExtension) {
+                    extensionApps.set(path, name);
+                    if (debug) {
+                      // eslint-disable-next-line no-console -- Debug output
+                      console.log(`✓ ${name} supports .${fileExt}`);
+                    }
+                  }
+                } catch {
+                  // JSON parse error - ignore
                 }
               }
             } catch {
@@ -363,7 +509,8 @@ async function getRegisteredApps (
         }
       }
     }
-  );  // Process claims to map content types to apps
+  );
+  // Process claims to map content types to apps
   result.forEach(
     /** @param {*} item - lsregister dump item */
     (item) => {

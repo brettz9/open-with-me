@@ -11,7 +11,26 @@ console.log('Getting apps that can open:', filePath);
 const apps = await getOpenWithApps(filePath, {
   includeAlternate: true,
   maxResults: 20
+  // skipCompatibilityCheck: true // Skip arch checks for faster testing
   // maxUTIDepth: 2 // Optionally limit to most specific UTIs
+});
+
+// Sort by priority flags first, then alphabetically
+apps.sort((a, b) => {
+  // File-specific default first
+  if (a.isFileDefault !== b.isFileDefault) {
+    return b.isFileDefault ? 1 : -1;
+  }
+  // System default second
+  if (a.isSystemDefault !== b.isSystemDefault) {
+    return b.isSystemDefault ? 1 : -1;
+  }
+  // User default third
+  if (a.isDefault !== b.isDefault) {
+    return b.isDefault ? 1 : -1;
+  }
+  // Then alphabetically
+  return a.name.localeCompare(b.name);
 });
 
 console.log(`\nFound ${apps.length} apps:\n`);
