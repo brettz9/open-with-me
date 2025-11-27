@@ -1,6 +1,6 @@
 {
   "name": "open-with-me",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Obtain (and open) desktop applications that can open a given file",
   "main": "src/index.js",
   "types": "./dist/src/index.d.cts",

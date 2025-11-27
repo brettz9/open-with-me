@@ -1,5 +1,9 @@
 # CHANGES for open-with-me
 
+## 0.2.4
+
+- fix(types): return type for `getOpenWithApps`
+
 ## 0.2.3
 
 - fix: path for native add-on

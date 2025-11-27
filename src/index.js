@@ -23,7 +23,9 @@ export const getOpenWithApps = async (filePath, options) => {
   if (nativeAddon) {
     // Use native addon for fast performance
     const {apps: nativeApps} = nativeAddon.getApplicationsForFile(filePath);
-    apps = nativeApps;
+    apps = /** @type {import('./getOpenWithApps.js').OpenWithApp[]} */ (
+      nativeApps
+    );
   } else {
     // Fall back to JavaScript implementation
     apps = await gowa(filePath, options);
