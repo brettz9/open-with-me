@@ -1,5 +1,9 @@
 # CHANGES for open-with-me
 
+## 0.4.0
+
+- feat: improved icon extraction
+
 ## 0.3.0
 
 - feat: add `isDefault` and `isFileDefault` for native add-on

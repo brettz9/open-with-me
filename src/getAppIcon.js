@@ -1,77 +1,59 @@
-/**
- * Extract and convert macOS app icons to PNG data URIs.
- */
-import {readFileSync} from 'node:fs';
-import {Icns} from '@fiahfy/icns';
-import DatauriParser from 'datauri/parser.js';
+import * as systemIcon2 from 'system-icon2';
+import {fromByteArray} from 'base64-js';
 
 /**
  * Options for getAppIcon.
  * @typedef GetAppIconOptions
- * @property {number} [minSize] - Minimum icon size in bytes
- * @property {boolean} [preferLarger] - Prefer larger icons
+ * @property {number} [size] - Icon size (16, 32, 64, 256, or 512)
  */
 
 /**
- * Extract the best available icon from a macOS .icns file.
- * @param {string} iconPath - Path to .icns file
+ * Extract app icon using native system APIs.
+ * @param {string} appPath - Path to .app bundle or .icns file
  * @param {GetAppIconOptions} [options] - Icon extraction options
- * @returns {string|null} PNG data URI or null if no valid icon found
+ * @returns {Promise<string|null>} PNG data URI or null if extraction fails
  */
-export function getAppIcon (iconPath, options = {}) {
-  const {minSize = 0, preferLarger = false} = options;
+export async function getAppIcon (appPath, options = {}) {
+  const {size = 16} = options;
 
   try {
-    // eslint-disable-next-line n/no-sync -- Synchronous for simplicity
-    const buf = readFileSync(iconPath);
-    const icns = Icns.from(buf);
+    // Use system-icon2 which provides native icon extraction
+    const iconBuffer = await systemIcon2.getIconForPath(appPath, size);
 
-    // Sort by size
-    const images = preferLarger
-      ? icns.images.toSorted((a, b) => b.bytes - a.bytes)
-      : icns.images.toSorted((a, b) => a.bytes - b.bytes);
-
-    // Find first valid icon
-    for (const icon of images) {
-      if (icon.bytes < minSize) {
-        continue;
-      }
-
-      const {osType, image} = icon;
-
-      // Filter out problematic icon types
-      if ((!osType.startsWith('ic') && !osType.startsWith('it')) ||
-          ['ic04', 'icnV'].includes(osType)) {
-        continue;
-      }
-
-      // Convert to PNG data URI
-      try {
-        const parser = new DatauriParser();
-        parser.format('.png', image);
-        return parser.content || null;
-      } catch {
-        continue;
-      }
+    if (!iconBuffer || iconBuffer.length === 0) {
+      return null;
     }
 
-    return null;
-  } catch {
+    // Convert buffer to base64 data URI
+    const base64 = fromByteArray(iconBuffer);
+    return `data:image/png;base64,${base64}`;
+  } catch (error) {
+    // Return null on any error
     return null;
   }
 }
 
 /**
  * Get icons for multiple apps.
- * @param {Array<{icon?: string}>} apps - Array of app objects with icon paths
+ * @param {Array<{path?: string, icon?: string}>} apps - Array of app objects
  * @param {GetAppIconOptions} [options] - Options passed to getAppIcon
  * @returns {Promise<Array<string|null>>} Array of data URIs (or null)
  */
-export function getAppIcons (apps, options = {}) {
-  return Promise.resolve(apps.map((app) => {
-    if (!app.icon) {
+export async function getAppIcons (apps, options = {}) {
+  const iconPromises = apps.map(async (app) => {
+    // Try app.path first (full app bundle), then app.icon (.icns file)
+    const targetPath = app.path || app.icon;
+
+    if (!targetPath) {
       return null;
     }
-    return getAppIcon(app.icon, options);
-  }));
+
+    try {
+      return await getAppIcon(targetPath, options);
+    } catch {
+      return null;
+    }
+  });
+
+  return await Promise.all(iconPromises);
 }

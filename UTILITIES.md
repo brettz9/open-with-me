@@ -141,8 +141,8 @@ The utility prioritizes apps that support the most specific UTI first.
 - `mdls` - File metadata extraction
 - `lsregister` - Launch Services database access
 - `mac-defaults` - macOS preferences reading
-- `@fiahfy/icns` - ICNS format parsing
-- `datauri` - Data URI generation
+- `system-icon2` - ICNS format parsing
+- `base64-js` - Data URI generation
 
 ## Notes
 

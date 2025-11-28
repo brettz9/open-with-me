@@ -1,6 +1,6 @@
 {
   "name": "open-with-me",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Obtain (and open) desktop applications that can open a given file",
   "main": "src/index.js",
   "types": "./dist/src/index.d.cts",
@@ -47,11 +47,11 @@
     "node": "^20.11.0 || >= 22.16.0"
   },
   "dependencies": {
-    "@fiahfy/icns": "0.0.7",
-    "datauri": "^4.1.0",
+    "base64-js": "^1.5.1",
     "lsregister": "1.0.0",
     "mac-defaults": "^2.0.0",
-    "mdls": "1.2.0"
+    "mdls": "1.2.0",
+    "system-icon2": "^0.5.1"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
