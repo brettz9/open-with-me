@@ -1,5 +1,9 @@
 # CHANGES for open-with-me
 
+## 0.4.1
+
+- fix: apply `maxResults` with native add-on
+
 ## 0.4.0
 
 - feat: improved icon extraction

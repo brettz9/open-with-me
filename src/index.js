@@ -33,6 +33,11 @@ export const getOpenWithApps = async (filePath, options) => {
 
     // Add isFileDefault and isDefault properties that native addon doesn't set
     await enrichAppMetadata(filePath, apps);
+
+    // Apply maxResults limit if specified
+    if (options?.maxResults && apps.length > options.maxResults) {
+      apps = apps.slice(0, options.maxResults);
+    }
   } else {
     // Fall back to JavaScript implementation
     apps = await gowa(filePath, options);
