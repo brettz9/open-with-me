@@ -1,5 +1,9 @@
 # CHANGES for open-with-me
 
+## 0.4.2
+
+- fix: ESM/CJS compatibility with system-icon2
+
 ## 0.4.1
 
 - fix: apply `maxResults` with native add-on

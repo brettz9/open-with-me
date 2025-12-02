@@ -1,5 +1,8 @@
-import * as systemIcon2 from 'system-icon2';
+import * as systemIcon2Namespace from 'system-icon2';
 import {fromByteArray} from 'base64-js';
+
+// Check for CJS
+const systemIcon2 = systemIcon2Namespace.default || systemIcon2Namespace;
 
 /**
  * Options for getAppIcon.
