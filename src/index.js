@@ -1,8 +1,7 @@
 import {getOpenWithApps as gowa} from './getOpenWithApps.js';
 import {extname} from 'node:path';
 import {MacOSDefaults, OpenWith} from 'mac-defaults';
-// @ts-expect-error - No type declarations available
-import mdls from 'mdls';
+import {mdls} from 'mdls-ts';
 
 export * from './getAppIcon.js';
 

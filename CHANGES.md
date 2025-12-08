@@ -1,5 +1,9 @@
 # CHANGES for open-with-me
 
+## 0.5.0
+
+- chore: rely on `mdls-ts`
+
 ## 0.4.2
 
 - fix: ESM/CJS compatibility with system-icon2

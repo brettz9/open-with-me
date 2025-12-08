@@ -17,9 +17,9 @@ importers:
       mac-defaults:
         specifier: ^2.0.0
         version: 2.0.0
-      mdls:
-        specifier: 1.2.0
-        version: 1.2.0
+      mdls-ts:
+        specifier: ^2.0.0
+        version: 2.0.0
       system-icon2:
         specifier: ^0.5.1
         version: 0.5.1
@@ -1845,8 +1845,8 @@ packages:
   mdast-util-to-string@4.0.0:
     resolution: {integrity: sha512-0H44vDimn51F0YwvxSJSm0eCDOJTRlmN0R1yBh4HLj9wiV1Dn0QoXGbvFAWj2hSItVTlCmBF1hqKlIyUBVFLPg==}
 
-  mdls@1.2.0:
-    resolution: {integrity: sha512-dNCaW7GA2c0jYQxRdTVrH84XpfY4glckSEv7tnY7wZ9Su07YKk92xyzOwIsgiqwwBwS3VYdpfB6R1D4ODtZ1VA==}
+  mdls-ts@2.0.0:
+    resolution: {integrity: sha512-Xmz3C2pH/DyfWVpWcxbkROsbXjsy2kKGHDwA+54u0hqIUTDSNBwsp42HRf4xqwH6UMXfmnlL3Svv0cbsQYuZqw==}
     engines: {node: '>= 6.0.0'}
 
   merge2@1.4.1:
@@ -4604,7 +4604,7 @@ snapshots:
     dependencies:
       '@types/mdast': 4.0.4
 
-  mdls@1.2.0: {}
+  mdls-ts@2.0.0: {}
 
   merge2@1.4.1: {}
 

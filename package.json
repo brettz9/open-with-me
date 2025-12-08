@@ -1,9 +1,9 @@
 {
   "name": "open-with-me",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "description": "Obtain (and open) desktop applications that can open a given file",
   "main": "src/index.js",
-  "types": "./dist/src/index.d.cts",
+  "types": "./dist/src/index.d.ts",
   "type": "module",
   "exports": {
     "import": {
@@ -12,7 +12,7 @@
     },
     "require": {
       "types": "./dist/src/index.d.cts",
-      "default": "./dist/index.js"
+      "default": "./dist/index.cjs"
     }
   },
   "scripts": {
@@ -21,7 +21,7 @@
     "attw": "attw --pack",
     "eslint": "eslint --ext=js,md,html .",
     "lint": "npm run eslint --",
-    "rollup": "rollup -c && tsc -p tsconfig-prod.json && echo '{\"type\": \"commonjs\"}' > dist/package.json",
+    "rollup": "rollup -c && tsc -p tsconfig-prod.json",
     "test-index": "node test/index.js && node test/getOpenWithApps.js",
     "test-native": "node test/test-native.js",
     "tests": "npm run test-native && npm run test-index",
@@ -50,7 +50,7 @@
     "base64-js": "^1.5.1",
     "lsregister": "1.0.0",
     "mac-defaults": "^2.0.0",
-    "mdls": "1.2.0",
+    "mdls-ts": "^2.0.0",
     "system-icon2": "^0.5.1"
   },
   "devDependencies": {

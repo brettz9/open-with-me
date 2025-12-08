@@ -111,7 +111,7 @@ export async function showOpenWithMenu (filePath) {
 
 ### macOS Components Used
 
-1. **mdls**: Retrieves file metadata including `kMDItemContentTypeTree` (UTI hierarchy)
+1. **mdls-ts**: Retrieves file metadata including `kMDItemContentTypeTree` (UTI hierarchy)
 2. **lsregister**: Launch Services database containing app capabilities and file type associations
 3. **mac-defaults**: Reads user preferences including `LSHandlers` for "Change All" settings
 4. **OpenWith class**: Extracts file-specific xattr overrides
@@ -138,7 +138,7 @@ The utility prioritizes apps that support the most specific UTI first.
 
 ## Dependencies
 
-- `mdls` - File metadata extraction
+- `mdls-ts` - File metadata extraction
 - `lsregister` - Launch Services database access
 - `mac-defaults` - macOS preferences reading
 - `system-icon2` - ICNS format parsing

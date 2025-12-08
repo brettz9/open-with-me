@@ -6,8 +6,7 @@
  */
 import {join, extname} from 'node:path';
 import {execSync} from 'node:child_process';
-// @ts-expect-error - No type declarations available
-import mdls from 'mdls';
+import {mdls} from 'mdls-ts';
 // @ts-expect-error - No type declarations available
 import lsregister from 'lsregister';
 import {MacOSDefaults, OpenWith} from 'mac-defaults';
