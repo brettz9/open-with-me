@@ -1,5 +1,9 @@
 # CHANGES for open-with-me
 
+## 0.6.0
+
+- chore: update `mdls-ts`
+
 ## 0.5.0
 
 - chore: rely on `mdls-ts`
